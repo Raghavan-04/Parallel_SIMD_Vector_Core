@@ -1,30 +1,3 @@
-# 2-Stage Pipelined Hardware Accelerator with Synchronous FIFOs
-
-A high-frequency, 2-stage pipelined hardware accelerator designed to optimize the multiply-accumulate (MAC) critical path by decoupling 16-bit signed multiplication from 32-bit accumulation. This design is built for high-throughput, real-time data streaming using signed integer arithmetic and synchronous input queues.
-
-## Key Features
-
-* **2-Stage Pipelining:** Decouples 16-bit signed multiplication from 32-bit accumulation, shortening the critical path to maximize maximum clock frequency ($F_{max}$).
-* **Two's Complement Arithmetic:** Fully implemented using 16-bit signed integer logic to easily handle positive and negative data streams natively.
-* **FIFO-Buffered Inputs:** Integrated dual synchronous input FIFOs (`fifo_a` and `fifo_b`) to decouple host data ingestion from core computational execution.
-* **High Throughput:** Achieves a sustained throughput of 1 result per clock cycle execution retirement after initial pipeline latency.
-* **Active Saturation Guarding:** Engineered with active overflow mitigation logic that dynamically locks the 32-bit accumulator at maximum positive (`32'h7FFFFFFF`) or negative (`32'h80000000`) bounds if limits are breached.
-* **Verilator Simulation Environment:** Fully verified using a modern C++ cycle-accurate simulation environment via Verilator and VCD timing tracing.
-
----
-
-## Hardware Architecture & Pipeline Structure
-
-The architecture isolates the multiplication delay from the accumulation loop feedback path to prevent timing violations at higher operational frequencies.
-
-
-       ┌─────────┐     ┌─────────┐
-A_in ──┤ FIFO_A  ├────►│         │     ┌──────────┐     ┌────────────┐
-       └─────────┘     │ Signed  ├────►│ Pipeline ├────►│  32-bit    ├──► Out
-       ┌─────────┐     │  Mult   │     │ Register │     │ Accumulator│
-B_in ──┤ FIFO_B  ├────►│         │     └──────────┘     └─────▲──────┘
-       └─────────┘     └─────────┘                            │
-                                └───────── Stage 1 ───────────┴─── Stage 2 ──┘
 
 
 # 2-Stage Pipelined Hardware Accelerator with Synchronous FIFOs
