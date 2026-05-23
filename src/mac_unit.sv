@@ -1,45 +1,44 @@
 `timescale 1ns/1ps
 
 module mac_unit #(
-    parameter WIDTH = 16
+    parameter IN_WIDTH  = 8,
+    parameter ACC_WIDTH = 32
 )(
     input  logic              clk,
     input  logic              rst_n,
-    input  logic              en,       // Enable: High when FIFO is not empty
-    input  logic              clr,      // Clear: To reset the running total
-    input  logic signed [WIDTH-1:0] a_in,
-    input  logic signed [WIDTH-1:0] b_in,
-    output logic signed [(WIDTH*2)-1:0] out 
+    input  logic              en,       // Pipeline clock enable (freeze control)
+    input  logic              clr,      // Synchronous accumulator clear
+    input  logic signed [IN_WIDTH-1:0]  a_in,  // INT8 Activation
+    input  logic signed [IN_WIDTH-1:0]  b_in,  // INT8 Weight
+    output logic signed [ACC_WIDTH-1:0] out    // INT32 Accumulated Output
 );
 
-    // Pipeline Registers
-    logic signed [(WIDTH*2)-1:0] mult_reg;
-    logic signed [(WIDTH*2)-1:0] acc_reg;
-    logic signed [(WIDTH*2)-1:0] next_acc;
+    // Pipeline Stage Registers
+    // Multiplying two 8-bit signed numbers requires a 16-bit intermediate container
+    logic signed [(IN_WIDTH*2)-1:0] mult_reg; 
+    logic signed [ACC_WIDTH-1:0]    acc_reg;
+    logic signed [ACC_WIDTH-1:0]    next_acc;
 
-    // --- OVERFLOW DETECTION & SATURATION CONSTANTS ---
-    // For a 32-bit signed accumulator
-    localparam signed [31:0] MAX_POS = 32'h7FFFFFFF;
-    localparam signed [31:0] MAX_NEG = 32'h80000000;
+    // --- 32-BIT SIGNED SATURATION CONSTANTS ---
+    localparam signed [ACC_WIDTH-1:0] MAX_POS = 32'h7FFFFFFF;
+    localparam signed [ACC_WIDTH-1:0] MAX_NEG = 32'h80000000;
 
-    // --- ARITHMETIC LOGIC ---
+    // --- ARITHMETIC LOGIC (INT32 Accumulation with Saturation) ---
     always_comb begin
-        // Preliminary addition result
-        next_acc = acc_reg + mult_reg;
+        // Automatically sign-extend the 16-bit multiplication product up to 32 bits before adding
+        next_acc = acc_reg + signed'(mult_reg);
 
-        // Saturation Logic:
-        // If (Pos + Pos = Neg) -> Positive Overflow
+        // Positive Overflow Safeguard: If (Pos + Pos = Neg) -> Snap to Max Positive
         if (acc_reg > 0 && mult_reg > 0 && next_acc < 0) begin
             next_acc = MAX_POS;
         end 
-        // If (Neg + Neg = Pos) -> Negative Overflow
+        // Negative Overflow Safeguard: If (Neg + Neg = Pos) -> Snap to Max Negative
         else if (acc_reg < 0 && mult_reg < 0 && next_acc > 0) begin
             next_acc = MAX_NEG;
         end
     end
 
-    // --- STAGE 1: Multiplication ---
-    // Latency: 1 Cycle
+    // --- STAGE 1: INT8 Signed Multiplication ---
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             mult_reg <= '0;
@@ -48,19 +47,18 @@ module mac_unit #(
         end
     end
 
-    // --- STAGE 2: Accumulation with Saturation ---
-    // Latency: 1 Cycle (Total 2)
+    // --- STAGE 2: INT32 Accumulation with Freeze Control ---
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             acc_reg <= '0;
         end else if (clr) begin
             acc_reg <= '0;
         end else if (en) begin
-            acc_reg <= next_acc; // Store the saturated result
+            acc_reg <= next_acc;
         end
     end
 
-    // Direct output assignment
+    // Continuous drive out to output port
     assign out = acc_reg;
 
 endmodule
