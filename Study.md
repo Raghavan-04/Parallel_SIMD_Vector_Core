@@ -531,6 +531,84 @@ You just took a standard, student-level hardware design and transformed it into 
 By taking this step-by-step approach, you systematically eliminated the structural and verification voids on your resume without risking your existing codebase. Here is exactly what you engineered:
 
 ---
+# Sync FIFO
+Let’s break down your **`sync_fifo.sv`** block. Since we are doing this step-by-step to lock in your understanding before updating code, we need to inspect where this block sits structurally and analyze how its internal logic functions.
+
+In your 4-Lane SIMD architecture, you have **8 independent instances** of this FIFO running in parallel (2 per lane: one for Operand A, one for Operand B). It acts as a dual-port elastic buffer memory.
+
+---
+
+## 🏗️ The Microarchitecture of a Synchronous FIFO
+
+A synchronous FIFO (First-In, First-Out) handles data transitions using a shared clock domain for both writing and reading. It relies on a localized dual-port memory matrix, read/write address pointers, and status generation flags.
+
+```text
+                     IN_WIDTH (8-bit)
+                          din
+                           │
+                           ▼
+                 ┌───────────────────┐
+  wr_en ────────►│ Dual-Port Memory  ├────────► dout (IN_WIDTH)
+                 │   Array Matrix    │
+                 └─────────▲─────────┘
+                           │
+             ┌─────────────┴─────────────┐
+             │       Control Logic       │
+             ├───────────────────────────┤
+             │  wr_ptr          rd_ptr   │◄─────── rd_en
+             │                           │
+             │  [ full ]       [ empty ] │
+             └───────────────────────────┘
+
+```
+
+### 1. The Ring Buffer Array (`mem`)
+
+Under the hood, the FIFO allocates a localized 2D register array based on your parameters:
+
+```systemverilog
+logic signed [WIDTH-1:0] mem [DEPTH-1:0];
+
+```
+
+With `WIDTH=8` and `DEPTH=16`, this builds a compact $8 \times 16$-bit storage array per queue. It functions as a **circular ring buffer**. The address pointers sweep from `0` to `15` and naturally roll back around to `0`.
+
+### 2. The Pointer Tracking Mechanics
+
+To manage where data is written and read without collisions, the architecture maintains two independent address pointers:
+
+* **`wr_ptr` (Write Pointer):** Tracks the next empty slot in the memory array where incoming data will be latched. It increments only when a valid write happens (`wr_en && !full`).
+* **`rd_ptr` (Read Pointer):** Tracks the current slot holding the oldest unread data. It increments only when a valid read transaction occurs (`rd_en && !empty`).
+
+### 3. The Counter & Status Flag Generation
+
+The hardest part of designing a clean FIFO is generating the `full` and `empty` flags. If the pointers are equal (`wr_ptr == rd_ptr`), it could mean the buffer is entirely empty, or it could mean it filled up completely and rolled all the way around.
+
+To resolve this ambiguity cleanly, the architecture uses a running **element counter register (`fifo_cnt`)**:
+
+* Every successful write increments `fifo_cnt` by 1.
+* Every successful read decrements `fifo_cnt` by 1.
+* Simultaneous read and write transactions keep `fifo_cnt` unchanged.
+
+The boundary logic then derives the flags using simple combinatorial comparisons:
+
+```systemverilog
+assign empty = (fifo_cnt == 0);
+assign full  = (fifo_cnt == DEPTH);
+
+```
+
+---
+
+## ⚡ How the Top Wrapper Manipulates the FIFO Flags
+
+Understanding how `top_accelerator.sv` hooks into these flags is essential to seeing how your structural backpressure functions:
+
+1. **Upstream Throttling:** The top wrapper monitors the `full` flags of the Operand A FIFOs. If any lane flags a `full = 1`, the wrapper drops `r_ready`. This protects the FIFO from experiencing a **Write Overflow condition** (writing into a full queue, which corrupts active data).
+2. **Downstream Execution:** The top wrapper checks the `empty` flags. The math cores only step forward if `all_fifos_have_data` is true, which means `empty` must be `0` across every single queue. If a lane flags an `empty = 1`, the wrapper halts the pipeline. This protects the core from a **Read Underflow condition** (reading from an empty queue, which would pipe garbage values into the multipliers).
+
+
+---
 
 ## 1. Upgraded the Computing Architecture (INT8 / INT32 Hybrid)
 
