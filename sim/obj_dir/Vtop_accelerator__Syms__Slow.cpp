@@ -11,7 +11,7 @@ Vtop_accelerator__Syms::Vtop_accelerator__Syms(VerilatedContext* contextp, const
     , TOP{this, namep}
 {
     // Check resources
-    Verilated::stackCheck(204);
+    Verilated::stackCheck(298);
     // Setup sub module instances
     // Configure time unit / time precision
     _vm_contextp__->timeunit(-9);

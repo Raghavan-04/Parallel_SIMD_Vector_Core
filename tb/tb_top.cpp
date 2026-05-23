@@ -114,24 +114,21 @@ int main(int argc, char** argv) {
         // Advance the physical clock edges
         clock_tick();
 
-        // ============================================================================
+       // ============================================================================
         // 📊 MECHANISM 3: INTERCEPTOR & SCOREBOARD COMPARATOR
         // ============================================================================
-        // Whenever the hardware's valid flag drops to 1, we pull from our software queue
         if (dut->v_out) {
             assert(!latency_tracker_queue.empty() && "Error: RTL asserted v_out but software queue is empty!");
             
             std::vector<long long> expected = latency_tracker_queue.front();
             latency_tracker_queue.pop();
 
-            std::cout << "[Cycle " << std::setsetw(2) << cycle << "] Checking SIMD Lanes: " << std::endl;
+            // FIXED: Changed std::setsetw to std::setw
+            std::cout << "[Cycle " << std::setw(2) << cycle << "] Checking SIMD Lanes: " << std::endl;
 
             for (int lane = 0; lane < LANES; lane++) {
-                // Extract 32-bit signed slices out of the global wide 128-bit vector bus
-                int64_t rtl_raw_slice = (dut->vec_acc_out >> (lane * 32)) & 0xFFFFFFFF;
-                
-                // Explicitly preserve the sign bit of the 32-bit hardware chunk
-                int32_t rtl_lane_result = (int32_t)rtl_raw_slice; 
+                // FIXED: Direct index into Verilator's wide array object instead of using bit shifts
+                int32_t rtl_lane_result = (int32_t)dut->vec_acc_out[lane]; 
 
                 std::cout << "  ↳ Lane " << lane << " -> Expected: " << std::setw(11) << expected[lane] 
                           << " | RTL Read: " << std::setw(11) << rtl_lane_result;

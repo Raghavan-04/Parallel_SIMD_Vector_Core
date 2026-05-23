@@ -12,13 +12,14 @@ Vtop_accelerator::Vtop_accelerator(VerilatedContext* _vcontextp__, const char* _
     , vlSymsp{new Vtop_accelerator__Syms(contextp(), _vcname__, this)}
     , clk{vlSymsp->TOP.clk}
     , rst_n{vlSymsp->TOP.rst_n}
-    , wr_en{vlSymsp->TOP.wr_en}
-    , fifo_full{vlSymsp->TOP.fifo_full}
     , acc_clr{vlSymsp->TOP.acc_clr}
-    , valid_out{vlSymsp->TOP.valid_out}
-    , din_a{vlSymsp->TOP.din_a}
-    , din_b{vlSymsp->TOP.din_b}
-    , acc_out{vlSymsp->TOP.acc_out}
+    , pipeline_en{vlSymsp->TOP.pipeline_en}
+    , v_in{vlSymsp->TOP.v_in}
+    , r_ready{vlSymsp->TOP.r_ready}
+    , v_out{vlSymsp->TOP.v_out}
+    , vec_din_a{vlSymsp->TOP.vec_din_a}
+    , vec_din_b{vlSymsp->TOP.vec_din_b}
+    , vec_acc_out{vlSymsp->TOP.vec_acc_out}
     , rootp{&(vlSymsp->TOP)}
 {
     // Register model with the context

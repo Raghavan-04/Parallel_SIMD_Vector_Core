@@ -87,7 +87,7 @@ module top_accelerator #(
     endgenerate
 
     // --- Control-Path Valid Delay Pipeline ---
-    logic [1:0] valid_pipe;
+    logic [2:0] valid_pipe;
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             valid_pipe <= 2'b00;

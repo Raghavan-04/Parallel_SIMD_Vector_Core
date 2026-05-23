@@ -31,13 +31,14 @@ class alignas(VL_CACHE_LINE_BYTES) Vtop_accelerator VL_NOT_FINAL : public Verila
     // propagate new values into/out from the Verilated model.
     VL_IN8(&clk,0,0);
     VL_IN8(&rst_n,0,0);
-    VL_IN8(&wr_en,0,0);
-    VL_OUT8(&fifo_full,0,0);
     VL_IN8(&acc_clr,0,0);
-    VL_OUT8(&valid_out,0,0);
-    VL_IN16(&din_a,15,0);
-    VL_IN16(&din_b,15,0);
-    VL_OUT(&acc_out,31,0);
+    VL_IN8(&pipeline_en,0,0);
+    VL_IN8(&v_in,0,0);
+    VL_OUT8(&r_ready,0,0);
+    VL_OUT8(&v_out,0,0);
+    VL_IN(&vec_din_a,31,0);
+    VL_IN(&vec_din_b,31,0);
+    VL_OUTW(&vec_acc_out,127,0,4);
 
     // CELLS
     // Public to allow access to /* verilator public */ items.
