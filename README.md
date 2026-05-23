@@ -105,8 +105,7 @@ To compile the underlying hardware code and execute the simulation tracking wave
 ```bash
 make clean && make
 
-
+```
 To visually audit the hardware trace signals yourself, load the exported data directly inside GTKWave:
 
-```
 
