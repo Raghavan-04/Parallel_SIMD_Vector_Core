@@ -400,7 +400,7 @@ void Vtop_accelerator___024root___nba_sequent__TOP__0(Vtop_accelerator___024root
         vlSelfRef.top_accelerator__DOT__simd_lanes__BRA__3__KET____DOT__fifo_a_inst__DOT__rd_ptr = 0U;
     }
     vlSelfRef.v_out = (1U & ((IData)(vlSelfRef.top_accelerator__DOT__valid_pipe) 
-                             >> 1U));
+                             >> 2U));
     vlSelfRef.top_accelerator__DOT__lane_out[0U] = vlSelfRef.top_accelerator__DOT__simd_lanes__BRA__0__KET____DOT__mac_core__DOT__acc_reg;
     vlSelfRef.top_accelerator__DOT__lane_out[1U] = vlSelfRef.top_accelerator__DOT__simd_lanes__BRA__1__KET____DOT__mac_core__DOT__acc_reg;
     vlSelfRef.top_accelerator__DOT__lane_out[2U] = vlSelfRef.top_accelerator__DOT__simd_lanes__BRA__2__KET____DOT__mac_core__DOT__acc_reg;

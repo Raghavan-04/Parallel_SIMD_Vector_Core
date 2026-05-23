@@ -98,6 +98,6 @@ module top_accelerator #(
     end
     
     // Assign downstream valid flag based on the 2-cycle execution latency
-    assign v_out = valid_pipe[1];
+    assign v_out = valid_pipe[2];
 
 endmodule

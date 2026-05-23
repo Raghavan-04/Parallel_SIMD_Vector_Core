@@ -102,7 +102,7 @@ VL_ATTR_COLD void Vtop_accelerator___024root___stl_sequent__TOP__0(Vtop_accelera
     auto& vlSelfRef = std::ref(*vlSelf).get();
     // Body
     vlSelfRef.v_out = (1U & ((IData)(vlSelfRef.top_accelerator__DOT__valid_pipe) 
-                             >> 1U));
+                             >> 2U));
     vlSelfRef.top_accelerator__DOT__simd_lanes__BRA__0__KET____DOT__mac_core__DOT__next_acc 
         = (vlSelfRef.top_accelerator__DOT__simd_lanes__BRA__0__KET____DOT__mac_core__DOT__acc_reg 
            + VL_EXTENDS_II(32,16, (IData)(vlSelfRef.top_accelerator__DOT__simd_lanes__BRA__0__KET____DOT__mac_core__DOT__mult_reg)));
