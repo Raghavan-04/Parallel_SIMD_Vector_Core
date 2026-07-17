@@ -5,6 +5,7 @@ A high-performance, 4-lane SIMD (Single Instruction, Multiple Data) vector proce
 
 The entire accelerator core is structurally decoupled via active Valid/Ready handshake protocols and validated using an automated C++ co-simulation framework.
 
+
 ## Key Features
 
 * **4-Lane SIMD Parallelism:** Processes an entire 4-component vector block simultaneously every single clock cycle, multiplying throughput by $4\times$ compared to traditional scalar engines.
