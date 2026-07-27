@@ -41,12 +41,12 @@ The microarchitecture splits the wide bus inputs across independent, hardware-is
    =====================================================
    STRUCTURAL COMPUTATION LAYER (4x Parallel MAC Lanes)
    =====================================================
-   ┌───────────────────────────────────────────────────┐
+   ┌──────────────────────────────────────────────────────┐
    │ Lane 0: [8x8 Mult] ──► [16-bit Reg] ──► [32-bit Acc] │
    │ Lane 1: [8x8 Mult] ──► [16-bit Reg] ──► [32-bit Acc] │
    │ Lane 2: [8x8 Mult] ──► [16-bit Reg] ──► [32-bit Acc] │
    │ Lane 3: [8x8 Mult] ──► [16-bit Reg] ──► [32-bit Acc] │
-   └───────────────────────┬───────────────────────────┘
+   └───────────────────────┬─────────────────────────────┘
                            │
                            ▼
                      vec_acc_out 
