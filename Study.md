@@ -1,5 +1,30 @@
 HARDWARE ACCELERATOR
 
+```
+
+32-bit Vector Bus A (4x INT8)              32-bit Vector Bus B (4x INT8)
+ [ Byte 3 ][ Byte 2 ][ Byte 1 ][ Byte 0 ]    [ Byte 3 ][ Byte 2 ][ Byte 1 ][ Byte 0 ]
+     │        │        │        │                │        │        │        │
+     ▼        ▼        ▼        ▼                ▼        ▼        ▼        ▼
+ ┌───────┐┌───────┐┌───────┐┌───────┐        ┌───────┐┌───────┐┌───────┐┌───────┐
+ │FIFO_A3││FIFO_A2││FIFO_A1││FIFO_A0│        │FIFO_B3││FIFO_B2││FIFO_B1││FIFO_B0│
+ └───┬───┘└───┬───┘└───┬───┘└───┬───┘        └───┬───┘└───┬───┘└───┬───┘└───┬───┘
+     │        │        │        │                │        │        │        │
+ ════╪════════╪════════╪════════╪════════════════╪════════╪════════╪════════╪════
+     ▼        ▼        ▼        ▼                ▼        ▼        ▼        ▼
+ ┌──────────────────────────────────────────────────────────────────────────────┐
+ │                        PARALLEL COMPUTATION LAYER                            │
+ │  Lane 3: [8x8 Mult] ──► [16-bit Reg] ──► Sign Ext ──► [32-bit Saturated Acc] │
+ │  Lane 2: [8x8 Mult] ──► [16-bit Reg] ──► Sign Ext ──► [32-bit Saturated Acc] │
+ │  Lane 1: [8x8 Mult] ──► [16-bit Reg] ──► Sign Ext ──► [32-bit Saturated Acc] │
+ │  Lane 0: [8x8 Mult] ──► [16-bit Reg] ──► Sign Ext ──► [32-bit Saturated Acc] │
+ └──────────────────────────────────────┬───────────────────────────────────────┘
+                                        │
+                                        ▼
+                   128-bit Wide Vector Output Bus (4x INT32)
+
+```
+
 REFERENCE: ARM NEON SDOT
 
 Here’s the simple version:
