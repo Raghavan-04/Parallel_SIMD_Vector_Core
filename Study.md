@@ -761,3 +761,94 @@ When the accelerator is running at steady-state full speed, data is written into
 * `wr_ptr` increments by 1.
 * `rd_ptr` increments by 1.
 * **`fifo_cnt` remains unchanged** (`fifo_cnt <= fifo_cnt`), maintaining zero stall cycles and achieving a sustained throughput of **1 vector retirement per clock cycle**.
+
+---
+
+### 1. Single FIFO Breakdown (`sync_fifo.sv`)
+
+* **Data Width (`WIDTH`):** **8 bits** (1 byte per slot, matching one INT8 vector component).
+* **Buffer Depth (`DEPTH`):** **16 slots**.
+* **Memory Matrix:** Declared in SystemVerilog as `logic signed [7:0] mem [15:0];`.
+* **Total Bits per FIFO:** $8 \times 16 = \mathbf{128\text{ bits}}$.
+
+---
+
+### 2. System-Wide FIFO Buffer Storage (Across All Lanes)
+
+Because your top-level core instantiates **8 parallel FIFOs** (4 for Operand A, 4 for Operand B across the 4 vector lanes):
+
+* **Total Vector Buffer Capacity:** $8 \text{ FIFOs} \times 128 \text{ bits} = \mathbf{1,024\text{ bits}}$ (or **128 Bytes**) of total elastic buffering across the processor cluster.
+
+This $8 \times 16$-deep layout allows the host to pre-load up to **16 full 32-bit vector cycles** into the accelerator before experiencing any backpressure!
+
+---
+
+## 🧩 1. Slots vs. Bits: What's the Difference?
+
+Think of a FIFO memory array like an **apartment building**:
+
+* **A Slot (Depth):** This is an individual **apartment unit** or row in memory. It represents *how many items* the FIFO can store sequentially over time.
+* **Bits (Width):** This is the **size of each apartment unit**. It represents *how much data* fits into a single slot.
+
+```text
+               WIDTH = 8 Bits (1 Byte)
+             ┌─────────────────────────┐
+    Slot 0   │  1 0 1 1 0 0 1 0        │  ◄── 1st vector operand
+    Slot 1   │  0 0 1 0 1 1 1 1        │  ◄── 2nd vector operand
+    Slot 2   │  1 1 0 0 0 1 0 1        │  ◄── 3rd vector operand
+      ...    │  ...                    │
+    Slot 15  │  0 1 0 1 0 1 1 0        │  ◄── 16th vector operand
+             └─────────────────────────┘
+             DEPTH = 16 Slots (Rows)
+
+```
+
+* **Width (Bits) = 8 bits:** Because each SIMD lane processes **1 byte (INT8)** at a time per operand.
+* **Depth (Slots) = 16 slots:** Because the memory array has **16 distinct rows/addresses** stacked on top of each other.
+
+---
+
+## ❓ 2. "Why 16 Slots? What is Depth?"
+
+**Depth** refers to the number of memory slots available in the ring buffer.
+
+You need 16 slots **not because of the data width**, but to handle **time and streaming traffic (elastic buffering)**.
+
+If your FIFO only had **1 slot**, your execution core and your host system would have to run in absolute 100% lockstep without a single cycle of delay. If the host paused for even one clock cycle, or if the downstream pipeline stalled, data would immediately drop or get overwritten.
+
+By making the FIFO **16 slots deep**:
+
+1. **Absorption of Host Jitter:** The host processor can blast **16 vector cycles of data in advance** into the FIFO before the MAC engine even finishes its first calculations.
+2. **Smooth Backpressure:** If downstream logic stalls, you have a **16-cycle safety buffer** before your `r_ready` flag has to pull down and freeze the host.
+
+---
+
+## ❓ 3. "After the computation layer, we require a 16-bit register right? Why is FIFO before?"
+
+Let's trace why the register sizes change across the pipeline:
+
+### **Why the FIFO is BEFORE the Math (8-bit inputs):**
+
+The FIFOs sit at the front door of the accelerator to store **raw incoming data operands** (`vec_din_a` and `vec_din_b`).
+
+* Your input data items are **INT8 (8-bit)** numbers.
+* Storing 8-bit numbers before multiplying them saves massive amounts of memory gate area. Storing 16-bit or 32-bit values at the input would waste silicon space!
+* Therefore, each input FIFO slot only needs to be **8 bits wide**.
+
+### **Why the intermediate register is 16 bits AFTER multiplication:**
+
+Inside Stage 1 of the computation layer, the lane multiplier takes two 8-bit inputs from the FIFOs:
+
+$$\text{8-bit input} \times \text{8-bit input} = \text{16-bit result}$$
+
+Because multiplying two $N$-bit numbers can result in a $2N$-bit number (e.g., $127 \times 127 = 16,129$, which requires 14–16 bits to represent), the pipeline register **`mult_reg` must be 16 bits wide** so the math doesn't truncate or lose precision.
+
+---
+
+## 💡 Summary Checklist
+
+| Component | Stage in Pipeline | Width (Bits) | Depth (Slots) | Purpose |
+| --- | --- | --- | --- | --- |
+| **Sync FIFO Memory** | **Before Compute** | **8 bits** | **16 slots** | Absorbs streaming host data traffic over time. |
+| **`mult_reg` Register** | **Stage 1 (Post-Mult)** | **16 bits** | *1 slot (Flip-Flop)* | Holds the $8 \times 8$-bit multiplication product. |
+| **`acc_reg` Register** | **Stage 2 (Post-Add)** | **32 bits** | *1 slot (Flip-Flop)* | Holds the accumulated total with saturation clamping. |
