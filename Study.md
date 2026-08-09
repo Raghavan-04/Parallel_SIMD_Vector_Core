@@ -641,6 +641,98 @@ When your terminal printed out:
 
 ```
 
-It proved that your SystemVerilog RTL perfectly matches your software model across every single lane, cycle, and randomized boundary condition. You didn't just write code; you **architected, pipelined, and programmatically signed off on a high-performance silicon IP block.**
+---
 
-This is the exact level of technical execution, design ownership, and microarchitectural mastery that sets a candidate apart to compete directly with experienced engineers and lay the groundwork for a hardware startup.
+## 🔍 The Microarchitecture of a Single Lane FIFO
+
+Every single block (e.g., `FIFO_A0`) is an independent **dual-port synchronous ring buffer** instantiated using your `sync_fifo.sv` module.
+
+```text
+               IN_WIDTH = 8 bits (Byte 0 from Bus)
+                        vec_din_a[7:0]
+                             │
+                             ▼
+                 ┌──────────────────────┐
+    wr_en ──────►│ Memory Matrix Array  ├──────► dout (8-bit) ──► To Lane 0 Multiplier
+                 │  mem [15:0] [7:0]    │
+                 └──────────▲───────────┘
+                            │
+             ┌──────────────┴──────────────┐
+             │        Pointer Logic        │
+             ├─────────────────────────────┤
+             │   wr_ptr           rd_ptr   │◄────── rd_en
+             │    [4:0]            [4:0]   │
+             │                             │
+             │   [ full ]        [ empty ] │
+             └─────────────────────────────┘
+
+```
+
+---
+
+## ⚙️ What Happens Inside Step-by-Step
+
+### 1. Ingestion & Unbundling (Bus Slicing)
+
+When your top-level wrapper receives a 32-bit vector word (`vec_din_a`), it doesn't feed a huge 32-bit memory. Instead, SystemVerilog slicing routes the specific bytes directly to their corresponding FIFO inputs:
+
+* `FIFO_A0` receives `vec_din_a[7:0]` (Byte 0)
+* `FIFO_A1` receives `vec_din_a[15:8]` (Byte 1)
+* `FIFO_A2` receives `vec_din_a[23:16]` (Byte 2)
+* `FIFO_A3` receives `vec_din_a[31:24]` (Byte 3)
+
+The exact same byte-slicing occurs simultaneously for `vec_din_b`.
+
+---
+
+### 2. Writing Data Into Memory (`wr_en` Cycle)
+
+When the host drives `v_in = 1` and the accelerator is ready (`r_ready = 1`), a write transaction occurs:
+
+1. **Address Latching:** The incoming 8-bit byte is latched into the register array at the slot pointed to by `wr_ptr`:
+```systemverilog
+mem[wr_ptr[3:0]] <= din;
+
+```
+
+
+2. **Pointer Advancement:** `wr_ptr` increments by 1 (`wr_ptr <= wr_ptr + 1`).
+3. **Counter Increment:** The internal tracking counter increases (`fifo_cnt <= fifo_cnt + 1`).
+
+---
+
+### 3. Reading Data Out to Multipliers (`rd_en` Cycle)
+
+When all 8 FIFOs have data available, the top wrapper enables execution and asserts `rd_en`:
+
+1. **Data Out:** The 8-bit value sitting at `mem[rd_ptr[3:0]]` is driven continuously onto `dout`, which connects directly to the Lane's $8 \times 8$-bit multiplier.
+2. **Pointer Advancement:** `rd_ptr` increments by 1 (`rd_ptr <= rd_ptr + 1`).
+3. **Counter Decrement:** The internal tracking counter decreases (`fifo_cnt <= fifo_cnt - 1`).
+
+---
+
+### 4. How `Full` & `Empty` Flags Control Backpressure
+
+The internal counter (`fifo_cnt`) handles status flag generation:
+
+* **Empty Logic (`assign empty = (fifo_cnt == 0);`):**
+If `fifo_cnt == 0`, the FIFO drops its `empty` flag high (`1`). The top wrapper sees this and holds the computation pipeline, injecting a **pipeline bubble** so the multipliers don't read stale garbage data.
+* **Full Logic (`assign full = (fifo_cnt == DEPTH);`):**
+If `fifo_cnt == 16` (`DEPTH`), the FIFO flags `full = 1`. The top-level wrapper evaluates a reduction NOR across all FIFOs:
+```systemverilog
+assign r_ready = !(|lane_fifo_full);
+
+```
+
+
+If **even one single FIFO** is full, `r_ready` drops to `0`. This forces the upstream host to hold its data, completely preventing **Write Overflow** hazards.
+
+---
+
+### 5. Simultaneous Read and Write (Throughput Flow)
+
+When the accelerator is running at steady-state full speed, data is written into the FIFO on the exact same clock edge that previous data is popped out to the MAC lane (`wr_en = 1` and `rd_en = 1` simultaneously):
+
+* `wr_ptr` increments by 1.
+* `rd_ptr` increments by 1.
+* **`fifo_cnt` remains unchanged** (`fifo_cnt <= fifo_cnt`), maintaining zero stall cycles and achieving a sustained throughput of **1 vector retirement per clock cycle**.
