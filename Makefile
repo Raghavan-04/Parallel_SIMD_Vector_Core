@@ -1,7 +1,7 @@
 # Verification tool configuration
 VERILATOR = verilator
 CXX = g++
-FLAGS = -Wall -Wno-fatal --trace --cc
+FLAGS = -Wall -Wno-fatal --trace --cc -CFLAGS "-I../../$(TB_DIR) -I../../$(SRC_DIR)"
 
 # Project directories
 SRC_DIR = src
@@ -22,11 +22,11 @@ compile:
 
 run: compile
 	@echo "--- Running Simulation ---"
-	./sim/obj_dir/Vtop_accelerator
+	./$(SIM_DIR)/obj_dir/Vtop_accelerator
 
 view:
 	@echo "--- Opening Waveform in GTKWave ---"
-	gtkwave sim/waveform.vcd
+	gtkwave $(SIM_DIR)/waveform.vcd
 
 clean:
 	rm -rf $(SIM_DIR)
