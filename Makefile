@@ -8,10 +8,6 @@ SRC_DIR = src
 TB_DIR = tb
 SIM_DIR = sim
 
-# Absolute paths using built-in GNU Make variable CURDIR
-ABS_SRC = $(CURDIR)/$(SRC_DIR)
-ABS_TB  = $(CURDIR)/$(TB_DIR)
-
 .PHONY: all compile run view clean
 
 all: run
@@ -21,7 +17,6 @@ compile:
 	$(VERILATOR) $(FLAGS) \
 		-I$(SRC_DIR) \
 		-I$(TB_DIR) \
-		-CFLAGS "-I$(ABS_TB) -I$(ABS_SRC)" \
 		$(SRC_DIR)/top_accelerator.sv \
 		$(SRC_DIR)/mac_unit.sv \
 		$(SRC_DIR)/sync_fifo.sv \

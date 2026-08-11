@@ -20,15 +20,6 @@ jobs:
           sudo apt-get update -y
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y verilator build-essential
 
-      - name: Inspect Repository Directory Structure
-        run: |
-          echo "=== Root Directory Listing ==="
-          ls -la
-          echo "=== SRC Directory ==="
-          ls -la src/ || true
-          echo "=== TB Directory ==="
-          ls -la tb/ || true
-
       - name: Compile and Run Automated Co-Sim Suite
         run: |
           make clean
