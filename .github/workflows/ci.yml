@@ -1,6 +1,5 @@
 name: SIMD Core CI/CD Pipeline
 
-# Trigger the CI pipeline on every push or Pull Request to the main branch
 on:
   push:
     branches: [ main, master ]
@@ -13,22 +12,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository code into the runner
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Step 2: Install toolchain dependencies on the Linux VM
-      - name: Install Toolchain (Verilator, GCC, Make)
+      - name: Install Verilator and Build Tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y verilator build-essential gtkwave
+          sudo apt-get update -y
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y verilator build-essential
 
-      # Step 3: Run Verilation, C++ compilation, and co-simulation execution
+      - name: Inspect Repository Directory Structure
+        run: |
+          echo "=== Root Directory Listing ==="
+          ls -la
+          echo "=== SRC Directory ==="
+          ls -la src/ || true
+          echo "=== TB Directory ==="
+          ls -la tb/ || true
+
       - name: Compile and Run Automated Co-Sim Suite
         run: |
           make clean
           make
-
-      # Step 4: Output status message upon completion
-      - name: Build Status Verification
-        run: echo "✅ CI/CD Regression executed successfully!"
