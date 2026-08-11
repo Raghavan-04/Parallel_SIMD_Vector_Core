@@ -1,19 +1,22 @@
 # Verification tool configuration
 VERILATOR = verilator
 CXX = g++
-FLAGS = -Wall -Wno-fatal --trace --cc -CFLAGS "-I../../$(TB_DIR) -I../../$(SRC_DIR)"
+FLAGS = -Wall -Wno-fatal --trace --cc -CFLAGS "-I../../tb -I../../src"
 
 # Project directories
 SRC_DIR = src
 TB_DIR = tb
 SIM_DIR = sim
 
-# Target rules
+# Default target
+.PHONY: all compile run view clean
+
 all: run
 
 compile:
 	@mkdir -p $(SIM_DIR)
-	$(VERILATOR) $(FLAGS) $(SRC_DIR)/top_accelerator.sv \
+	$(VERILATOR) $(FLAGS) \
+		$(SRC_DIR)/top_accelerator.sv \
 		$(SRC_DIR)/mac_unit.sv \
 		$(SRC_DIR)/sync_fifo.sv \
 		--exe $(TB_DIR)/tb_top.cpp \
